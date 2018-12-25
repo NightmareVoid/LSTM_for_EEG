@@ -1,0 +1,356 @@
+import mne
+#import sys
+import numpy as np
+np.random.seed(1337)
+from sklearn.preprocessing import scale
+from sklearn.utils import shuffle
+import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+import scipy.io
+#import h5py
+#import matplotlib.pyplot as plt
+
+#import keras.backend as K
+#from keras.layers import LSTM,Dense
+#from keras.models import Sequential
+#from keras.optimizers import Adam
+#from keras.callbacks import Callback
+#from keras.utils import np_utils
+from keras.callbacks import TensorBoard
+
+
+channel_we_need=[43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]  #取导联,python中由于从0开始所以前移了一位，matlab中是从44开始
+channel_name=['P7','P5','P3','P1','PZ','P2','P4','P6','P8','PO7','PO5','PO3','POz','PO4','PO6','PO8','CB1','O1','Oz','O2','CB2']
+channel_Num=len(channel_we_need)
+
+
+#def readeegfromcnt(filepath):
+#  date_dir=filepath#'D:\OneDrive\EEG-python'#数据目录
+# # print(len(data))
+# 
+#  raw=mne.io.read_raw_cnt(data_dir,montage=None,preload=True)
+#  raw.info['bads']=['FP1','FPZ','FP2','AF3','AF4','F7','F5','F3','F1','FZ','F2','F4','F6','F8','FT7','FC5','FC3','FC1','FCZ','FC2','FC4','FC6','FT8','T7','C5','C3',
+# 'C1','CZ','C2','C4','C6','T8','M1','TP7','CP5','CP3','CP1','CPZ','CP2','CP4','CP6','TP8','M2']
+#  raw.filter(l_freq=0.5, h_freq=None)
+#  events = mne.find_events(raw, 'STI 014')
+#  epochs = mne.Epochs(raw, events, event_id=[1,2,3,4], tmin=tmin, tmax=tmax,baseline=None,picks=channel_we_need)
+#  
+#  #数据标准化
+#  datatemp=epochs.get_data()
+#  print('datatemp_size:',len(datatemp))
+#  for i in range(len(datatemp)):
+#      for j in range(len(datatemp[i,])):
+#          datatemp[i,j,]=scale(datatemp[i,j,])
+#  print('datatemp_scale_size:',len(datatemp))  
+#
+#     
+#   #数据提取       
+#  for i in range(len(epochs.events)):
+#      datatemp1=[epochs.events[i,3],datatemp[i]]
+#      data.append(datatemp1)
+#  print('data_size_temp:',len(data),'::::',data[-5][0][0],' =? ',epochs.event_id[-5],' =? ',epochs.events[-5,3])   
+
+#########################################################
+def getdata(rootpath):
+    xdata=[]
+    ydata=[]
+    for root,dirs,files in os.walk(rootpath):
+        for file in files:
+            if 'cnt' in file:
+#                print(file)
+#                readeegfromcnt(os.path.join(root,file))
+                raw=mne.io.read_raw_cnt(os.path.join(root,file),montage=None,preload=True)
+                raw.info['bads']=['FP1','FPZ','FP2','AF3','AF4','F7','F5','F3','F1','FZ','F2','F4','F6','F8','FT7','FC5','FC3','FC1','FCZ','FC2','FC4','FC6','FT8','T7','C5','C3',
+                                  'C1','CZ','C2','C4','C6','T8','M1','TP7','CP5','CP3','CP1','CPZ','CP2','CP4','CP6','TP8','M2']
+                raw.filter(l_freq=1.0, h_freq=70)
+                events = mne.find_events(raw, 'STI 014')
+                print(events)
+                events_id=[]
+                for elem in [1,2,3,4]:
+                    if elem in events:
+                        events_id.append(elem)
+#                print(events_id)
+                epochs = mne.Epochs(raw, events, event_id=events_id, tmin=tmin, tmax=tmax,baseline=None,picks=channel_we_need)
+#                print(epochs.event_id)
+#                epochs.plot(n_channels=2)
+                
+            
+#            #数据标准化
+                datatemp=epochs.get_data()
+#                plt.plot(100000*datatemp[1,1,:])
+#                print('datatemp_shape:',datatemp.shape)
+                for i in range(len(datatemp)):
+                    for j in range(len(datatemp[i,])):
+                        datatemp[i,j,]=scale(datatemp[i,j,])
+#                print('datatemp_scale_shape:',datatemp.shape)
+#                plt.plot(datatemp[1,1,:],'r')
+#                plt.show()
+#            
+#            #数据提取
+                for i in range(len(epochs.events)):
+#                    datatemp1=[np.array(epochs.events[i,2])]
+#                    datatemp2=[datatemp[i]]
+                    xdata.append(datatemp[i].T)
+                    ydata.append(np.array(epochs.events[i,2]-1))
+#                print('data_size_temp:',len(xdata),'::::',' =? ',epochs.events[-5][2])
+#                plt.plot(xdata[1][1],'g')
+#                print(ydata[1])
+#                plt.show()
+#   xdata,ydata=np.array(xdata),np.array(ydata)
+    xdata,ydata=shuffle(np.array(xdata),np.array(ydata))
+#    scipy.io.savemat('VCEEGall0.5.mat',{'xdata':xdata,
+#                                  'ydata':ydata})
+    raw.close()
+           
+  
+#        print('data_size(should=data_size_temp):',len(data),'\n')
+#    data=np.random.shuffle(data)#随机打乱顺序   
+    return xdata,ydata
+
+#################
+def getdata2(rootpath):#
+    tmin0=0.0
+    tmax0=0.5
+    tmin1=0.5
+    tmax1=1.0 
+    tmin2=1.0
+    tmax2=1.5
+    tmin3=1.5
+    tmax3=2.0
+    xdata=[]
+    ydata=[]
+    for root,dirs,files in os.walk(rootpath):
+        for file in files:
+            if 'cnt' in file:
+#                print(file)
+#                readeegfromcnt(os.path.join(root,file))
+                raw=mne.io.read_raw_cnt(os.path.join(root,file),montage=None,preload=True)
+                raw.info['bads']=['FP1','FPZ','FP2','AF3','AF4','F7','F5','F3','F1','FZ','F2','F4','F6','F8','FT7','FC5','FC3','FC1','FCZ','FC2','FC4','FC6','FT8','T7','C5','C3',
+                                  'C1','CZ','C2','C4','C6','T8','M1','TP7','CP5','CP3','CP1','CPZ','CP2','CP4','CP6','TP8','M2']
+                raw.filter(l_freq=1.0, h_freq=70)
+                events = mne.find_events(raw, 'STI 014')
+                events_id=[]
+                for elem in [1,2,3,4]:
+                    if elem in events:
+                        events_id.append(elem)
+                epochs0 = mne.Epochs(raw, events, event_id=events_id, tmin=tmin0, tmax=tmax0,baseline=None,picks=channel_we_need)
+                epochs1 = mne.Epochs(raw, events, event_id=events_id, tmin=tmin1, tmax=tmax1,baseline=None,picks=channel_we_need)
+                epochs2 = mne.Epochs(raw, events, event_id=events_id, tmin=tmin2, tmax=tmax2,baseline=None,picks=channel_we_need)
+                epochs3 = mne.Epochs(raw, events, event_id=events_id, tmin=tmin3, tmax=tmax3,baseline=None,picks=channel_we_need)
+                
+
+                
+                
+             #数据标准化0
+                datatemp0=epochs0.get_data()
+                for i in range(len(datatemp0)):
+                    for j in range(len(datatemp0[i,])):
+                        datatemp0[i,j,]=scale(datatemp0[i,j,])   
+#           #数据提取0
+                for i in range(len(epochs0.events)):
+                    xdata.append(datatemp0[i].T)
+                    ydata.append(np.array(epochs0.events[i,2]-1))
+                    
+                    
+#           #数据标准化1
+                datatemp1=epochs1.get_data()
+                for i in range(len(datatemp1)):
+                    for j in range(len(datatemp1[i,])):
+                        datatemp1[i,j,]=scale(datatemp1[i,j,])   
+#           #数据提取1
+                for i in range(len(epochs1.events)):
+                    xdata.append(datatemp1[i].T)
+                    ydata.append(np.array(epochs1.events[i,2]-1))
+                    
+              
+            #数据标准化2
+                datatemp2=epochs2.get_data()
+                for i in range(len(datatemp2)):
+                    for j in range(len(datatemp2[i,])):
+                        datatemp2[i,j,]=scale(datatemp2[i,j,])   
+#           #数据提取2
+                for i in range(len(epochs2.events)):
+                    xdata.append(datatemp2[i].T)
+                    ydata.append(np.array(epochs2.events[i,2]-1))
+                    
+                    
+                
+            #数据标准化3
+                datatemp3=epochs3.get_data()
+                for i in range(len(datatemp3)):
+                    for j in range(len(datatemp3[i,])):
+                        datatemp3[i,j,]=scale(datatemp3[i,j,])   
+#            #数据提取3
+                for i in range(len(epochs1.events)):
+                    xdata.append(datatemp3[i].T)
+                    ydata.append(np.array(epochs3.events[i,2]-1))
+                    
+                    
+                    
+                    
+    xdata,ydata=shuffle(np.array(xdata),np.array(ydata))
+    scipy.io.savemat('VCEEGall0.5_1.0_1.5_2.0all.mat',{'xdata':xdata,
+                                  'ydata':ydata})
+    raw.close()
+    
+    return xdata,ydata
+
+
+#######################
+def getdatafrommat(rootpath): 
+    for elem in os.listdir(rootpath):
+#        print(elem)
+        if 'mat' in elem:
+            mat=scipy.io.loadmat(rootpath+'\\'+elem)
+            xdata=mat['xdata']
+            ydata=mat['ydata']
+            ydata=ydata.T
+#            mat.close()
+    return xdata,ydata
+#    
+##########RNN-LSTM————————————————————————————————————————————————————————————————————
+    #1.0：1.0-70带通滤波，未降采样，未确定使用整个三秒内哪一段作为实验数据。
+#初步计划使用全三秒-降采样为250；使用0.5秒-不降采样；使用某一段的0.5秒-不降采样
+#使用某一段的0.75秒-不降采样。使用Z-mean标准化方法。先测试一下顺序刺激，也就是没有使用连续刺激
+#时的数据.64lstm节点.adam优化器，学习率不变
+##########RNN-LSTM————————————————————————————————————————————————————————————————————
+def EEGLSTM(xdata,ydata):
+    time_steps=(tmax-tmin)*1000+1    #等于一次的点
+    input_size=21    #等于导联
+    batch_size=32
+    cell_size=64  #21*e
+    output_size=4
+    lr_start=0.001    #开始时刻学习率  1.0试验使用0.001（adam默认，并打印看是否动态调整）
+    
+    #predata
+    xdata=xdata
+    ydata=np_utils.to_categorical(ydata,num_classes=4)
+    # build a LSTM RNN
+    model=Sequential()
+    
+    model.add(LSTM(
+            input_shape=(time_steps,input_size),
+            output_dim=cell_size,
+            ))
+    
+    #nomlize and acc
+    model.add(Dense(32,kernel_initializer='he_uniform',activation='relu'))
+    
+    #输出结果
+    model.add(Dense(output_size,activation='softmax'))
+    
+    #编译
+    adam=Adam(lr_start)
+    model.compile(optimizer=adam,
+                  loss='mean_squared_error',
+                  metrics=['accuracy']
+                  )
+    
+    
+    #定义callback以及可视化
+    tensorboard=TensorBoard(log_dir='/media/amx/EEG/logs',)
+    class callbackplot(Callback):
+        
+        def on_train_begin(self, logs={}):
+
+            model.summary()
+            self.acc=[]
+            self.loss=[]
+            self.valacc=[]
+            self.valloss=[]
+            self.lr_time=[]
+            
+        def on_epoch_end(self,epoch,logs={}):
+            self.acc.append(logs.get('acc'))
+            self.loss.append(logs.get('loss'))
+            self.valacc.append(logs.get('val_acc'))
+            self.valloss.append(logs.get('val_loss'))
+            self.lr_time.append(K.get_value(model.optimizer.lr))
+            
+        def on_train_end(self,logs={}):
+            scipy.io.savemat('RNN-LSTMv1.0.mat',{'acc':self.acc,
+                                             'loss':self.loss,
+                                             'val_acc':self.valacc,
+                                             'val_loss':self.valloss,
+                                             'lr':self.lr_time})
+            
+    callbackplot= callbackplot()
+    
+    
+    
+    
+    
+    #Train——————
+    model.fit(xdata,ydata,batch_size=batch_size,epochs=3000,
+                            validation_split=0.1,
+                            callbacks=[callbackplot])
+    model.save('EEGLSTMv1.0.h5')
+    
+
+
+
+
+
+########DBN-DNN——————————————————————————————————————————————————————————————————————————
+
+    
+########DBN-DNN——————————————————————————————————————————————————————————————————————————
+#def EEGDBN(data):
+#    
+#    #predata
+#    xdata=data[:,1]
+#    ydata=data[:,0]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+if __name__  == "__main__":     
+    rootpath='D:\\EEG\\EEG\\all'  
+    duration=3 #总的持续时间
+#    tmin=0.0 #开始时间1.0：0.0
+#    tmax=0.5 #结束时间1.0：1.0
+#    samprate_we_want=200#我们需要的采样频率
+#    useful_point=duration*samprate_we_want #一个trial中有用的采样点个数
+#    xdata,ydata=getdata(rootpath)#使用0-0.5s数据
+#    xdata,ydata=getdatafrommat(rootpath)
+    
+    getdata2(rootpath)#使用1.0-1.5s 0.5-1.0s数据
+    print('Done Fucker!')
+    
+#    xdata,ydata=getdatafrommat(rootpath)#直接从mat载入数据
+    
+#    print('Rockn Roll<(￣︶￣)↗[GO!]','\n')
+#    EEGLSTM(xdata,ydata)
+###    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
